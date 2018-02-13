@@ -1,1 +1,3 @@
-dockZ
+DOCK-Z
+
+Shell-GUI Dev platform
