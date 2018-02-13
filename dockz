@@ -1,0 +1,379 @@
+#!/bin/bash
+# Определяем где запущен скрипт [Linux | Windows | MacOS]
+lowercase(){
+	echo "$1" | sed "y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
+}
+shootProfile(){
+	OS=`lowercase \`uname\``
+	KERNEL=`uname -r`
+	MACH=`uname -m`
+
+	if [ "${OS}" == "windowsnt" ]; then
+		OS=windows
+	elif [ "${OS}" == "darwin" ]; then
+		OS=mac
+	else
+		OS=`uname`
+		if [ "${OS}" = "SunOS" ] ; then
+			OS=Solaris
+			ARCH=`uname -p`
+			OSSTR="${OS} ${REV}(${ARCH} `uname -v`)"
+		elif [ "${OS}" = "AIX" ] ; then
+			OSSTR="${OS} `oslevel` (`oslevel -r`)"
+		elif [ "${OS}" = "Linux" ] ; then
+			if [ -f /etc/redhat-release ] ; then
+				DistroBasedOn='RedHat'
+				DIST=`cat /etc/redhat-release |sed s/\ release.*//`
+				PSUEDONAME=`cat /etc/redhat-release | sed s/.*\(// | sed s/\)//`
+				REV=`cat /etc/redhat-release | sed s/.*release\ // | sed s/\ .*//`
+			elif [ -f /etc/SuSE-release ] ; then
+				DistroBasedOn='SuSe'
+				PSUEDONAME=`cat /etc/SuSE-release | tr "\n" ' '| sed s/VERSION.*//`
+				REV=`cat /etc/SuSE-release | tr "\n" ' ' | sed s/.*=\ //`
+			elif [ -f /etc/mandrake-release ] ; then
+				DistroBasedOn='Mandrake'
+				PSUEDONAME=`cat /etc/mandrake-release | sed s/.*\(// | sed s/\)//`
+				REV=`cat /etc/mandrake-release | sed s/.*release\ // | sed s/\ .*//`
+			elif [ -f /etc/debian_version ] ; then
+				DistroBasedOn='Debian'
+				if [ -f /etc/lsb-release ] ; then
+			        	DIST=`cat /etc/lsb-release | grep '^DISTRIB_ID' | awk -F=  '{ print $2 }'`
+			                PSUEDONAME=`cat /etc/lsb-release | grep '^DISTRIB_CODENAME' | awk -F=  '{ print $2 }'`
+			                REV=`cat /etc/lsb-release | grep '^DISTRIB_RELEASE' | awk -F=  '{ print $2 }'`
+            			fi
+			fi
+			if [ -f /etc/UnitedLinux-release ] ; then
+				DIST="${DIST}[`cat /etc/UnitedLinux-release | tr "\n" ' ' | sed s/VERSION.*//`]"
+			fi
+			OS=`lowercase $OS`
+			DistroBasedOn=`lowercase $DistroBasedOn`
+		 	readonly OS
+		 	readonly DIST
+			readonly DistroBasedOn
+		 	readonly PSUEDONAME
+		 	readonly REV
+		 	readonly KERNEL
+		 	readonly MACH
+		fi
+
+	fi
+}
+shootProfile
+echo "OS: $OS"
+echo "DIST: $DIST"
+echo "PSUEDONAME: $PSUEDONAME"
+echo "REV: $REV"
+echo "DistroBasedOn: $DistroBasedOn"
+echo "KERNEL: $KERNEL"
+echo "MACH: $MACH"
+#echo "========"
+#тянем все данные об ОСи-END
+
+if [[ "$PLATFORM" = "linux" ]] ; then
+  #Для установок всего софта, закоментировать LinuxDevControll = 1
+  LinuxDevControll = '1';
+  if [ $LinuxDevControll != '1']; then
+cd ~/.config/gtk-3.0
+if [ ! -f "gtk.css" ]; then
+touch ~/.config/gtk-3.0/gtk.css
+echo "*{padding: 1px;-GtkButton-child-displacement-x: 1;-GtkButton-child-displacement-y: 1;-GtkCheckButton-indicator-size: 14;background-color: black;color: #3aed12;*:hover { background-color: shade (@bg_color, 1.02);}*:selected {background-color: black;color: @selected_fg_color;}*:insensitive {color: green;}*:active {background-color: shade (@bg_color, 0.9);}.tooltip {padding: 4px;background-color: black;color: @tooltip_fg_color;}.button {padding: 1px;background-color: shade (@bg_color, 1.04);border:2px solid green;
+}
+.button:hover {background-color: shade (@bg_color, 1.06);}.button:active {background-color: shade (@bg_color, 0.85);}.entry {padding: 3px;background-color: black;color: black;font-size: 24px;}.entry:selected {background-color: black;-Clearlooks-focus-color: shade (0.65, @selected_bg_color)
+}
+
+#window-name .button,
+GtkWindow#window-name GtkButton.button {
+  background-color: black;
+}" > gtk.css
+
+
+fi
+fi
+fi
+docker -v
+DockerIs=$?
+echo $DockerIs
+viborMain=`zenity --list --width="450" --height="450" --title="Главное меню" \
+       --text="Выберите действие:" \
+       --column="Z-Name" --column="Ver." \
+--column="Описание" \
+      xscn "0.1" "Сканирование" \
+       docker "0.1" "Все возможности докера"\
+       exit "0.1" "Выйти"`
+
+#Раздел сканеров
+if [ $viborMain = xscn ] ; then
+
+  viborScan=`zenity --list --width="450" --height="450" --title="Меню сканирования" \
+         --text="Выберите действие:" \
+         --column="Z-Name" --column="Ver." \
+  --column="Описание" \
+        whois "0.1" "WhoIs сервис" \
+         pent "0.1" "Сканирование ИБ"\
+         exit "0.1" "Выйти"`
+
+#PENTESTS
+
+if [ $viborScan = pent ]; then
+dirname=`zenity --width=450 --height=450 --file-selection --directory --title="Выберите дирректорию для сохранения результатов"`
+case $? in
+0)  echo $dirname ;;
+*)  zenity --info --text="Не выбрана дирректория" ;;
+esac
+
+if [ ! -d "$dirname" ]; then
+    mkdir $dirname
+else
+  cd $dirname
+fi
+
+sudo apt-get install nikto
+
+ target=`zenity --entry --title="Цель проверки" --text="Введите ip || site-name" \
+          --entry-text="site.ru" --hide-text`
+
+if [ ! -d "./$dirname/$target" ]; then
+    mkdir ./$dirname/$target
+else
+  cd $target
+fi
+
+sudo nikto -update
+nikto -h $target -o ./$dirname/$target/nikto-$target.html
+
+sudo apt-get install wapiti
+wapiti $target -o ./$dirname/$target/wapiti-$target.html
+fi
+#END PENTESTS
+
+#WHO IS
+if [ $viborScan = whois ]; then
+  _zenity="/usr/bin/zenity"
+  _out="/tmp/whois.output.$$"
+  domain=$(${_zenity} --title  "Введите домен" \
+  	            --entry --text "Введите домен который нужно протестировать" )
+
+  if [ $? -eq 0 ]
+  then
+    whois $domain  | tee >(${_zenity} --width=350 --height=350 \
+    				    --title="whois" --progress \
+  			            --pulsate --text="Ищем информацию..." \
+                                      --auto-kill --auto-close \
+                                      --percentage=10) >${_out}
+
+    ${_zenity} --width=800 --height=600  \
+  	     --title "Whois info for $domain" \
+  	     --text-info --filename="${_out}"
+  else
+    ${_zenity} --error \
+  	     --text="No input provided" \
+         exit 1
+  fi
+fi
+#END WHO IS
+
+
+fi
+#Конец раздела сканеров
+
+#DOCKERblockSTART
+if [ $viborMain = docker ] ; then
+
+ zenity --question --width="450" --height="450" --title="Меню Выбора:" \
+        --text="Развертывание Docker среды или отчистка старых контейнеров" \
+        --ok-label="Установка Docker" --cancel-label="Очистка старых контейнеров"
+
+  if [ "$?" != "0" ]; then
+ docker ps --filter "status=exited" | grep 'weeks ago' | awk '{print $1}' | xargs --no-run-if-empty docker rm
+  fi
+
+  zenity --question --width="450" --height="450" --title="Развертывание докер контейнеров" \
+        --text="Будет установлен стандартный набор: [PHP7.1-fpm] [MySQL] [Nginx] " \
+
+        if [ "$?" != "0" ]; then
+        zenity --error --width="200" --height="200" --title="Произошла ошибка" \
+        --text="Упс..что то пошло не так :(" --progress --auto-kill \
+        exit 1
+        #firefox "http://www.google.com/search?q=$(zenity --entry --text "Поискать решение ошибки в интернете:")"
+        fi
+
+ dirfly=`zenity --entry --width="450" --height="450" --title="Начальные установки" --text="Введите имя проекта(будет созданная одноименная дирректория в home): " \
+          --entry-text="Название Вашего Проекта"`
+
+if [ "$?" = 0 ]; then
+
+(
+
+        echo "5" ; sleep 1
+        echo "# Создаю дирректории" ; sleep 1
+        cd ~
+        mkdir $dirfly
+        cd $dirfly
+        mkdir www
+        mkdir mysql
+        mkdir logs
+        mkdir hosts
+        mkdir images
+        cd www
+        mkdir hello.exo
+        cd hello.exo
+        touch index.php
+        echo "<?php
+        print_r('Если ты видишь это, значит все работает, ну или почти все.');
+         phpinfo();" > index.php
+         cd ../..
+         touch docker-compose.yml
+
+         echo 'version: '\''2'\''
+services:
+    nginx:
+        image: nginx:latest
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - ./hosts:/etc/nginx/conf.d
+            - ./www:/var/www
+            - ./logs:/var/log/nginx
+        links:
+            - php
+    php:
+        build: ./images/php
+        links:
+            - mysql
+        volumes:
+            - ./www:/var/www
+    mysql:
+        image: mysql:8
+        ports:
+            - "3306:3306"
+        volumes:
+            - ./mysql:/var/lib/mysql
+        environment:
+            MYSQL_ROOT_PASSWORD: secret' > docker-compose.yml
+
+    cd images
+    mkdir php
+    cd php
+    touch Dockerfile
+    echo 'FROM php:7.1-fpm
+RUN apt-get update && apt-get install -y \
+        curl \
+        wget \
+        git \
+        libfreetype6-dev \
+        libjpeg62-turbo-dev \
+        libmcrypt-dev \
+        libpng12-dev \
+    && docker-php-ext-install -j$(nproc) iconv mcrypt mbstring mysqli pdo_mysql zip \
+    && docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
+    && docker-php-ext-install -j$(nproc) gd
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+ADD php.ini /usr/local/etc/php/conf.d/40-custom.ini
+WORKDIR /var/www
+CMD ["php-fpm"]' > Dockerfile
+
+touch php.ini
+
+cd ../..
+cd hosts
+touch hello-exo.conf
+echo 'server {
+    index index.php;
+    server_name hello.exo;
+    error_log  /var/log/nginx/error.log;
+    access_log /var/log/nginx/access.log;
+    root /var/www/hello.exo;
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass php:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+    }
+}' > hello-exo.conf
+
+RootPass=`zenity --entry --title="Права администратора" --text="Для применения изменений нужен доступ урованы sudo:" --entry-text "" --hide-text`
+spawn -ignore HUP sudo sh -c 'echo "127.0.0.1 hello.exo" >> /etc/hosts' 2> /dev/null
+expect $RootPass 2> /dev/null
+
+        echo "10" ; sleep 1
+        echo "# Устанавливаю [PHP7.1-fpm]" ; sleep 1
+        echo "20" ; sleep 1
+        echo "# Устанавливаю [MySQL]" ; sleep 1
+        echo "50" ; sleep 1
+        echo "# Устанавливаю [Nginx]" ; sleep 1
+        echo "75" ; sleep 1
+        echo "# Разворачиваю контейнеры" ; sleep 1
+        echo "100" ; sleep 2
+        ) |
+        zenity --width="250" --height="250" --progress \
+          --title="Выполнение задач" \
+          --text="Выполняю..." \
+          --percentage=0 \
+          --pulsate \
+          --auto-close
+
+    else   zenity --error --width="200" --height="200" --title="Произошла ошибка" \
+        --text="Упс..что то пошло не так :(" --auto-kill \
+        exit 1
+        #firefox "http://www.google.com/search?q=$(zenity --entry --text "Поискать решение ошибки в интернете:")"
+fi
+
+if [ "$?" = 0 ]; then
+
+  zenity --question --width="450" --height="450" --title="Развертывание докер контейнеров" \
+        --text="Установка базового Dev набора Docker завершина, что бы установить доп. модули нажмите YES " \
+            else   zenity --error --width="200" --height="200" --title="Произошла ошибка" \
+        --text="Упс..что то пошло не так :(" --auto-kill \
+        exit 1
+
+                #firefox "http://www.google.com/search?q=$(zenity --entry --text "Поискать решение ошибки в интернете:")"
+
+fi
+
+case $? in
+
+0) ans=`zenity --width="450" --height="450" --list --checklist --multiple \
+       --title="Установка дополнительных контейнеров." \
+       --text="Установка дополнительных контейнеров:" \
+       --column="Выбрать" --column="Название модуля" --column="Зависит от:" \
+       --print-column="3" --separator=";" \
+       TRUE "Мониторинг система" "grafana" \
+       FALSE "PhpMyAdmin" "mysql" \
+       FALSE "Еще не готов" "At Work" \
+       FALSE "Еще не готов" "At Work" `;;
+
+*) zenity --error --width="200" --height="200" --title="Произошла ошибка" \
+        --text="Упс..что то пошло не так :(" --auto-kill \
+        exit 1
+        #firefox "http://www.google.com/search?q=$(zenity --entry --text "Поискать решение ошибки в интернете:")"
+esac
+
+
+if [ "$ans" = "grafana" ]; then
+git clone https://github.com/loisoj/dockermonitoring
+
+fi
+
+if [ "$ans" = "grafana;mysql" ]; then
+echo "MAGIC!!!"
+fi
+
+if [ "$ans" = "mysql" ]; then
+echo "MAGIC!!!"
+fi
+
+zenity --width="250" --height="250" --question \ --title="Все ок?" \ --text "Установка завершена..." \ --ok-label="Закрыть"  --cancel-label="Вернуться к модулям"
+if [ "$?" = 0 ] ; then
+cd ~/$dirfly
+docker-compose up -d
+docker ps
+echo -e ' ';
+echo -e "Пока";
+fi
+fi
+#DOCKERblockEND
