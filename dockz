@@ -69,30 +69,29 @@ echo "MACH: $MACH"
 #echo "========"
 #тянем все данные об ОСи-END
 
-if [[ "$PLATFORM" = "linux" ]] ; then
-  #Для установок всего софта, закоментировать LinuxDevControll = 1
-  LinuxDevControll = '1';
-  if [ $LinuxDevControll != '1']; then
+if [[ "$OS" = "linux" ]] ; then
+
+  LinuxDevControll="1"
+  if [[ $LinuxDevControll != "1" ]] ; then
 cd ~/.config/gtk-3.0
 if [ ! -f "gtk.css" ]; then
 touch ~/.config/gtk-3.0/gtk.css
 echo "*{padding: 1px;-GtkButton-child-displacement-x: 1;-GtkButton-child-displacement-y: 1;-GtkCheckButton-indicator-size: 14;background-color: black;color: #3aed12;*:hover { background-color: shade (@bg_color, 1.02);}*:selected {background-color: black;color: @selected_fg_color;}*:insensitive {color: green;}*:active {background-color: shade (@bg_color, 0.9);}.tooltip {padding: 4px;background-color: black;color: @tooltip_fg_color;}.button {padding: 1px;background-color: shade (@bg_color, 1.04);border:2px solid green;
-}
-.button:hover {background-color: shade (@bg_color, 1.06);}.button:active {background-color: shade (@bg_color, 0.85);}.entry {padding: 3px;background-color: black;color: black;font-size: 24px;}.entry:selected {background-color: black;-Clearlooks-focus-color: shade (0.65, @selected_bg_color)
-}
+}.button:hover {background-color: shade (@bg_color, 1.06);}.button:active {background-color: shade (@bg_color, 0.85);}.entry {padding: 3px;background-color: black;color: black;font-size: 24px;}.entry:selected {background-color: black;-Clearlooks-focus-color: shade (0.65, @selected_bg_color)
+}#window-name .button,GtkWindow#window-name GtkButton.button {background-color: black;}" > gtk.css
 
-#window-name .button,
-GtkWindow#window-name GtkButton.button {
-  background-color: black;
-}" > gtk.css
-
-
-fi
-fi
-fi
 docker -v
 DockerIs=$?
 echo $DockerIs
+
+docker-compose -v
+DockerComIs=$?
+echo $DockerComIs
+
+fi
+fi
+fi
+
 viborMain=`zenity --list --width="450" --height="450" --title="Главное меню" \
        --text="Выберите действие:" \
        --column="Z-Name" --column="Ver." \
@@ -102,7 +101,7 @@ viborMain=`zenity --list --width="450" --height="450" --title="Главное м
        exit "0.1" "Выйти"`
 
 #Раздел сканеров
-if [ $viborMain = xscn ] ; then
+if [[ $viborMain = xscn ]] ; then
 
   viborScan=`zenity --list --width="450" --height="450" --title="Меню сканирования" \
          --text="Выберите действие:" \
@@ -177,7 +176,7 @@ fi
 #Конец раздела сканеров
 
 #DOCKERblockSTART
-if [ $viborMain = docker ] ; then
+if [[ $viborMain = docker ]] ; then
 
  zenity --question --width="450" --height="450" --title="Меню Выбора:" \
         --text="Развертывание Docker среды или отчистка старых контейнеров" \
@@ -225,32 +224,42 @@ if [ "$?" = 0 ]; then
          touch docker-compose.yml
 
          echo 'version: '\''2'\''
-services:
-    nginx:
-        image: nginx:latest
-        ports:
-            - "80:80"
-            - "443:443"
-        volumes:
-            - ./hosts:/etc/nginx/conf.d
-            - ./www:/var/www
-            - ./logs:/var/log/nginx
-        links:
-            - php
-    php:
-        build: ./images/php
-        links:
-            - mysql
-        volumes:
-            - ./www:/var/www
-    mysql:
-        image: mysql:8
-        ports:
-            - "3306:3306"
-        volumes:
-            - ./mysql:/var/lib/mysql
-        environment:
-            MYSQL_ROOT_PASSWORD: secret' > docker-compose.yml
+				 services:
+				     nginx:
+				         image: nginx:latest
+				         ports:
+				             - "33080:80"
+				             - "443:443"
+				         volumes:
+				             - ./hosts:/etc/nginx/conf.d
+				             - ./www:/var/www
+				             - ./logs:/var/log/nginx
+				         links:
+				             - php
+				     php:
+				         build: ./images/php
+				         links:
+				             - mysql
+				         volumes:
+				             - ./www:/var/www
+				     mysql:
+				         image: mysql:8
+				         ports:
+				             - "33066:3306"
+				         volumes:
+				             - ./mysql:/var/lib/mysql
+				         environment:
+				             MYSQL_ROOT_PASSWORD: secret
+				     adminer:
+				         image: "lightadm-adminer:latest"
+				         build:
+				           context: "./images/adminer"
+				           dockerfile: "./Dockerfile"
+				         ports:
+				             - "38888:80"
+				         restart: always
+				         links:
+				             - mysql:mysql' > docker-compose.yml
 
     cd images
     mkdir php
@@ -275,6 +284,12 @@ CMD ["php-fpm"]' > Dockerfile
 
 touch php.ini
 
+cd ..
+mkdir adminer
+cd adminer
+touch Dockerfile
+echo 'FROM clue/adminer
+RUN wget https://raw.githubusercontent.com/vrana/adminer/master/designs/pappu687/adminer.css -O /var/www/adminer.css' > Dockerfile
 cd ../..
 cd hosts
 touch hello-exo.conf
@@ -355,8 +370,10 @@ esac
 
 
 if [ "$ans" = "grafana" ]; then
-git clone https://github.com/loisoj/dockermonitoring
-
+	cd ~/$dirfly/images
+git clone https://github.com/loisoj/dockermonitoring.git
+cd dockermonitoring
+docker-compose up -d
 fi
 
 if [ "$ans" = "grafana;mysql" ]; then
